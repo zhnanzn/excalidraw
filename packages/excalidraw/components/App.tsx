@@ -7962,7 +7962,6 @@ class App extends React.Component<AppProps, AppState> {
               nextSceneElements,
               elementsToAppend,
               oldIdToDuplicatedId,
-              "duplicatesServeAsOld",
             );
             bindElementsToFramesAfterDuplication(
               nextSceneElements,

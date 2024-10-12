@@ -1170,3 +1170,21 @@ export const safelyParseJSON = (json: string): Record<string, any> | null => {
     return null;
   }
 };
+
+export const sieve = <T>(
+  items: readonly T[],
+  ...comparators: ((item: Readonly<T>) => boolean)[]
+) =>
+  items.reduce(
+    (grouping: T[][], value: T) => {
+      for (const idx in comparators) {
+        if (comparators[idx](value)) {
+          grouping[idx].push(value);
+          return grouping;
+        }
+      }
+      grouping[comparators.length].push(value);
+      return grouping;
+    },
+    Array.from({ length: comparators.length }, (): T[] => []),
+  );

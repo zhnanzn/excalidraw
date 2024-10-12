@@ -49,7 +49,7 @@ import type { ElementUpdate } from "./mutateElement";
 import { mutateElement } from "./mutateElement";
 import type Scene from "../scene/Scene";
 import { LinearElementEditor } from "./linearElementEditor";
-import { arrayToMap, tupleToCoors } from "../utils";
+import { arrayToMap, invariant, sieve, tupleToCoors } from "../utils";
 import { KEYS } from "../keys";
 import { getBoundTextElement, handleBindTextResize } from "./textElement";
 import { aabbForElement, getElementShape, pointInsideBounds } from "../shapes";
@@ -75,6 +75,7 @@ import {
   clamp,
 } from "../../math";
 import { segmentIntersectRectangleElement } from "../../utils/geometry/shape";
+import type { Mutable } from "../utility-types";
 
 export type SuggestedBinding =
   | NonDeleted<ExcalidrawBindableElement>
@@ -1197,10 +1198,98 @@ const getLinearElementEdgeCoors = (
   );
 };
 
+export const fixBindingsAfterDuplication = (
+  nextSceneElements: readonly ExcalidrawElement[],
+  oldElements: readonly ExcalidrawElement[],
+  oldIdToNewId: Map<ExcalidrawElement["id"], ExcalidrawElement["id"]>,
+  duplicatesServeasOld: boolean = false,
+): void => {
+  // invariant(
+  //   oldIdToNewId
+  //     .keys()
+  //     .every((key: string) => oldElements.find((el) => el.id === key)),
+  //   "Missing old mapping",
+  // );
+  // invariant(
+  //   oldIdToNewId
+  //     .values()
+  //     .every((value: string) =>
+  //       nextSceneElements.find((el) => el.id === value),
+  //     ),
+  //   "Missing old mapping",
+  // );
+
+  const newIds = Array.from(oldIdToNewId.values());
+  const newElements = nextSceneElements.filter((el) =>
+    newIds.find((id: string) => id === el.id),
+  );
+
+  // Clean up duplicated junk data
+  if (!duplicatesServeasOld) {
+    newElements.forEach((el) => {
+      if (isBindableElement(el)) {
+        const mutableEl = el as Mutable<ExcalidrawBindableElement>;
+        mutableEl.boundElements =
+          mutableEl.boundElements?.filter(({ type }) => type === "text") ??
+          null;
+        mutableEl.strokeColor = "red";
+      } else if (isLinearElement(el)) {
+        const mutableEl = el as Mutable<ExcalidrawLinearElement>;
+        mutableEl.startBinding = null;
+        mutableEl.endBinding = null;
+        mutableEl.strokeColor = "red";
+      }
+    });
+  }
+
+  // Match bindings when binding pairs are duplicated
+  oldElements
+    .filter((el) => isBindableElement(el))
+    .forEach((oldBindable) => {
+      oldBindable.boundElements?.forEach(({ id, type }) => {
+        if (type === "arrow") {
+          const oldLinear = oldElements.find(
+            (el) => el.id === id,
+          ) as ExcalidrawLinearElement;
+          if (oldLinear) {
+            const newBindableId = oldIdToNewId.get(oldBindable.id);
+            const newBindable = newElements.find(
+              (el) => el.id === newBindableId,
+            ) as Mutable<ExcalidrawBindableElement>;
+            const newLinearId = oldIdToNewId.get(oldLinear.id);
+            const newLinear = newElements.find(
+              (el) => el.id === newLinearId,
+            ) as Mutable<ExcalidrawLinearElement>;
+            if (newBindable && newLinear) {
+              if (oldLinear.startBinding?.elementId === oldBindable.id) {
+                newLinear.startBinding = {
+                  ...oldLinear.startBinding,
+                  elementId: newBindable.id,
+                };
+              } else if (oldLinear.endBinding?.elementId === oldBindable.id) {
+                newLinear.endBinding = {
+                  ...oldLinear.endBinding,
+                  elementId: newBindable.id,
+                };
+              } else {
+                console.error("Duplication binding issue: unreachable reached");
+              }
+
+              newBindable.boundElements = [
+                ...(newBindable.boundElements ?? []),
+                { type: "arrow", id: newLinear.id },
+              ];
+            }
+          }
+        }
+      });
+    });
+};
+
 // We need to:
 // 1: Update elements not selected to point to duplicated elements
 // 2: Update duplicated elements to point to other duplicated elements
-export const fixBindingsAfterDuplication = (
+export const _fixBindingsAfterDuplication = (
   sceneElements: readonly ExcalidrawElement[],
   oldElements: readonly ExcalidrawElement[],
   oldIdToDuplicatedId: Map<ExcalidrawElement["id"], ExcalidrawElement["id"]>,
