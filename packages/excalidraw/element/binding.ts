@@ -1219,6 +1219,12 @@ export const fixBindingsAfterDuplication = (
   //   "Missing old mapping",
   // );
 
+  // 1. While iterating bindables
+  //   a.) collect all linears attached not in the duplication, reset the bound properties
+  //   b.) collect all linears attached in duplication, reset the bound properties
+  // 2. Duplicated linears are attached to the new duplicated bindable, or unbound
+  // 3. Non-duplicated linears get attached either the old or the new element, depending on the parameter
+
   const newIds = Array.from(oldIdToNewId.values());
   const newElements = nextSceneElements.filter((el) =>
     newIds.find((id: string) => id === el.id),
