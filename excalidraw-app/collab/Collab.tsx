@@ -91,7 +91,7 @@ import type {
 } from "../../packages/excalidraw/data/reconcile";
 import { SyncClient } from "../../packages/excalidraw/sync/client";
 
-export const syncAPIAtom = atom<SyncClient | null>(null);
+export const syncApiAtom = atom<SyncClient | null>(null);
 export const collabAPIAtom = atom<CollabAPI | null>(null);
 export const isCollaboratingAtom = atom(false);
 export const isOfflineAtom = atom(false);
@@ -240,7 +240,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
 
     SyncClient.create(this.excalidrawAPI, SyncIndexedDBAdapter).then(
       (syncAPI) => {
-        appJotaiStore.set(syncAPIAtom, syncAPI);
+        appJotaiStore.set(syncApiAtom, syncAPI);
       },
     );
 
@@ -277,6 +277,8 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       window.clearTimeout(this.idleTimeoutId);
       this.idleTimeoutId = null;
     }
+
+    appJotaiStore.get(syncApiAtom)?.disconnect();
     this.onUmmount?.();
   }
 

@@ -56,7 +56,7 @@ import Collab, {
   collabAPIAtom,
   isCollaboratingAtom,
   isOfflineAtom,
-  syncAPIAtom,
+  syncApiAtom,
 } from "./collab/Collab";
 import {
   exportToBackend,
@@ -132,7 +132,6 @@ import { AIComponents } from "./components/AI";
 import { ExcalidrawPlusIframeExport } from "./ExcalidrawPlusIframeExport";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
-import { SyncClient } from "../packages/excalidraw/sync/client";
 
 polyfill();
 
@@ -364,7 +363,7 @@ const ExcalidrawWrapper = () => {
 
   const [, setShareDialogState] = useAtom(shareDialogStateAtom);
   const [collabAPI] = useAtom(collabAPIAtom);
-  const [syncAPI] = useAtom(syncAPIAtom);
+  const [syncAPI] = useAtom(syncApiAtom);
   const [nextVersion, setNextVersion] = useState(-1);
   const currentVersion = useRef(-1);
   const [acknowledgedIncrements, setAcknowledgedIncrements] = useState<
@@ -383,7 +382,7 @@ const ExcalidrawWrapper = () => {
     syncAPI?.connect();
 
     return () => {
-      syncAPI?.disconnect(SyncClient.NORMAL_CLOSURE);
+      syncAPI?.disconnect();
       clearInterval(interval);
     };
   }, [syncAPI]);
@@ -884,7 +883,7 @@ const ExcalidrawWrapper = () => {
           // CFDO: in safari the whole canvas gets selected when dragging
           if (value !== acknowledgedIncrements.length) {
             // don't listen to updates in the detached mode
-            syncAPI?.disconnect(SyncClient.NORMAL_CLOSURE);
+            syncAPI?.disconnect();
           } else {
             // reconnect once we're back to the latest version
             syncAPI?.connect();
