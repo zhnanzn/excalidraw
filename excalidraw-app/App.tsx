@@ -691,7 +691,7 @@ const ExcalidrawWrapper = () => {
     // CFDO: some appState like selections should also be transfered (we could even persist it)
     if (!elementsChange.isEmpty()) {
       try {
-        syncAPI?.push("durable", increment);
+        syncAPI?.push(increment);
       } catch (e) {
         console.error(e);
       }
