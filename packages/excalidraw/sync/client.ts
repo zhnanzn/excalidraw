@@ -8,15 +8,15 @@ import { Utils } from "./utils";
 import {
   SyncQueue,
   type MetadataRepository,
-  type IncrementsRepository,
+  type DeltasRepository,
 } from "./queue";
-import { StoreIncrement } from "../store";
+import { StoreDelta } from "../store";
 import type { ExcalidrawImperativeAPI } from "../types";
 import type { SceneElementsMap } from "../element/types";
 import type {
-  CLIENT_INCREMENT,
+  CLIENT_DELTA,
   CLIENT_MESSAGE_RAW,
-  SERVER_INCREMENT,
+  SERVER_DELTA,
 } from "./protocol";
 import { debounce } from "../utils";
 import { randomId } from "../random";
@@ -37,12 +37,6 @@ class SocketClient {
   // Max size for outgoing messages is 1MiB (due to CFDO limits),
   // thus working with a slighter smaller limit of 800 kB (leaving 224kB for metadata)
   private static readonly MAX_MESSAGE_SIZE = 800_000;
-
-  private static readonly NORMAL_CLOSURE_CODE = 1000;
-  // Chrome throws "Uncaught InvalidAccessError" with message:
-  //   "The close code must be either 1000, or between 3000 and 4999. 1009 is neither."
-  // therefore using custom codes instead.
-  private static readonly MESSAGE_IS_TOO_LARGE_ERROR_CODE = 3009;
 
   private isOffline = true;
   private socket: ReconnectingWebSocket | null = null;
@@ -133,7 +127,7 @@ class SocketClient {
   }): void {
     if (this.isOffline) {
       // connection opened, don't let the WS buffer the messages,
-      // as we do explicitly buffer unacknowledged increments
+      // as we do explicitly buffer unacknowledged deltas
       return;
     }
 
@@ -193,8 +187,8 @@ class SocketClient {
   };
 }
 
-interface AcknowledgedIncrement {
-  increment: StoreIncrement;
+interface AcknowledgedDelta {
+  delta: StoreDelta;
   version: number;
 }
 
@@ -212,17 +206,15 @@ export class SyncClient {
   private readonly metadata: MetadataRepository;
   private readonly client: SocketClient;
 
-  // #region ACKNOWLEDGED INCREMENTS & METADATA
+  // #region ACKNOWLEDGED DELTAS & METADATA
   // CFDO: shouldn't be stateful, only request / response
-  private readonly acknowledgedIncrementsMap: Map<
-    string,
-    AcknowledgedIncrement
-  > = new Map();
+  private readonly acknowledgedDeltasMap: Map<string, AcknowledgedDelta> =
+    new Map();
 
-  public get acknowledgedIncrements() {
-    return Array.from(this.acknowledgedIncrementsMap.values())
+  public get acknowledgedDeltas() {
+    return Array.from(this.acknowledgedDeltasMap.values())
       .sort((a, b) => (a.version < b.version ? -1 : 1))
-      .map((x) => x.increment);
+      .map((x) => x.delta);
   }
 
   private _lastAcknowledgedVersion = 0;
@@ -257,7 +249,7 @@ export class SyncClient {
   // #region SYNC_CLIENT FACTORY
   public static async create(
     api: ExcalidrawImperativeAPI,
-    repository: IncrementsRepository & MetadataRepository,
+    repository: DeltasRepository & MetadataRepository,
   ) {
     const queue = await SyncQueue.create(repository);
     // CFDO: temporary for custom roomId (though E+ will be similar)
@@ -266,7 +258,7 @@ export class SyncClient {
     return new SyncClient(api, repository, queue, {
       host: SyncClient.HOST_URL,
       roomId: roomId ?? SyncClient.ROOM_ID,
-      // CFDO: temporary, so that all increments are loaded and applied on init
+      // CFDO: temporary, so that all deltas are loaded and applied on init
       lastAcknowledgedVersion: 0,
     });
   }
@@ -290,17 +282,17 @@ export class SyncClient {
     });
   }
 
-  public push(increment?: StoreIncrement): void {
-    if (increment) {
-      this.queue.add(increment);
+  public push(delta?: StoreDelta): void {
+    if (delta) {
+      this.queue.add(delta);
     }
 
-    // re-send all already queued increments
-    for (const queuedIncrement of this.queue.getAll()) {
+    // re-send all already queued deltas
+    for (const queuedDeltas of this.queue.getAll()) {
       this.client.send({
         type: "push",
         payload: {
-          ...queuedIncrement,
+          ...queuedDeltas,
         },
       });
     }
@@ -350,9 +342,7 @@ export class SyncClient {
   };
 
   // CFDO: refactor by applying all operations to store, not to the elements
-  private handleAcknowledged = (payload: {
-    increments: Array<SERVER_INCREMENT>;
-  }) => {
+  private handleAcknowledged = (payload: { deltas: Array<SERVER_DELTA> }) => {
     let nextAcknowledgedVersion = this.lastAcknowledgedVersion;
     let elements = new Map(
       // CFDO: retrieve the map already
@@ -360,17 +350,17 @@ export class SyncClient {
     ) as SceneElementsMap;
 
     try {
-      const { increments: remoteIncrements } = payload;
+      const { deltas: remoteDeltas } = payload;
 
-      // apply remote increments
-      for (const { id, version, payload } of remoteIncrements) {
-        // CFDO: temporary to load all increments on init
-        this.acknowledgedIncrementsMap.set(id, {
-          increment: StoreIncrement.load(payload),
+      // apply remote deltas
+      for (const { id, version, payload } of remoteDeltas) {
+        // CFDO: temporary to load all deltas on init
+        this.acknowledgedDeltasMap.set(id, {
+          delta: StoreDelta.load(payload),
           version,
         });
 
-        // we've already applied this increment
+        // we've already applied this delta
         if (version <= nextAcknowledgedVersion) {
           continue;
         }
@@ -378,32 +368,32 @@ export class SyncClient {
         if (version === nextAcknowledgedVersion + 1) {
           nextAcknowledgedVersion = version;
         } else {
-          // it's fine to apply increments our of order,
+          // it's fine to apply deltas our of order,
           // as they are idempontent, so that we can re-apply them again,
           // as long as we don't mark their version as acknowledged
           console.debug(
-            `Received out of order increment, expected "${
+            `Received out of order delta, expected "${
               nextAcknowledgedVersion + 1
             }", but received "${version}"`,
           );
         }
 
-        // local increment shall not have to be applied again
+        // local delta shall not have to be applied again
         if (this.queue.has(id)) {
           this.queue.remove(id);
         } else {
-          // apply remote increment with higher version than the last acknowledged one
-          const remoteIncrement = StoreIncrement.load(payload);
-          [elements] = remoteIncrement.elementsChange.applyTo(
+          // apply remote delta with higher version than the last acknowledged one
+          const remoteDelta = StoreDelta.load(payload);
+          [elements] = remoteDelta.elements.applyTo(
             elements,
             this.api.store.snapshot.elements,
           );
         }
 
-        // apply local increments
-        for (const localIncrement of this.queue.getAll()) {
-          // CFDO: in theory only necessary when remote increments modified same element properties!
-          [elements] = localIncrement.elementsChange.applyTo(
+        // apply local deltas
+        for (const localDelta of this.queue.getAll()) {
+          // CFDO: in theory only necessary when remote deltas modified same element properties!
+          [elements] = localDelta.elements.applyTo(
             elements,
             this.api.store.snapshot.elements,
           );
@@ -417,7 +407,7 @@ export class SyncClient {
 
       this.lastAcknowledgedVersion = nextAcknowledgedVersion;
     } catch (e) {
-      console.error("Failed to apply acknowledged increments:", e);
+      console.error("Failed to apply acknowledged deltas:", e);
       // CFDO: might just be on error
       this.schedulePull();
     }
@@ -427,14 +417,12 @@ export class SyncClient {
     ids: Array<string>;
     message: string;
   }) => {
-    // handle rejected increments
+    // handle rejected deltas
     console.error("Rejected message received:", payload);
   };
 
-  private handleRelayed = (payload: {
-    increments: Array<CLIENT_INCREMENT>;
-  }) => {
-    // apply relayed increments / buffer
+  private handleRelayed = (payload: { deltas: Array<CLIENT_DELTA> }) => {
+    // apply relayed deltas / buffer
     console.log("Relayed message received:", payload);
   };
 

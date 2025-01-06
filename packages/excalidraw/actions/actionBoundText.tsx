@@ -86,7 +86,7 @@ export const actionUnbindText = register({
     return {
       elements,
       appState,
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
 });
@@ -163,7 +163,7 @@ export const actionBindText = register({
     return {
       elements: pushTextAboveContainer(elements, container, textElement),
       appState: { ...appState, selectedElementIds: { [container.id]: true } },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
 });
@@ -323,7 +323,7 @@ export const actionWrapTextInContainer = register({
         ...appState,
         selectedElementIds: containerIds,
       },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
 });

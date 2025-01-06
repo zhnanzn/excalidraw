@@ -163,7 +163,7 @@ export const actionGroup = register({
         ),
       },
       elements: reorderedElements,
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   predicate: (elements, appState, _, app) =>
@@ -266,7 +266,7 @@ export const actionUngroup = register({
     return {
       appState: { ...appState, ...updateAppState },
       elements: nextElements,
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>

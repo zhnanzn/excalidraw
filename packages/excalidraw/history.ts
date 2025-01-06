@@ -1,9 +1,9 @@
 import { Emitter } from "./emitter";
 import type { SceneElementsMap } from "./element/types";
-import type { Store, StoreIncrement } from "./store";
+import type { Store, StoreDelta } from "./store";
 import type { AppState } from "./types";
 
-type HistoryEntry = StoreIncrement & {
+type HistoryEntry = StoreDelta & {
   skipRecording?: true;
 };
 
@@ -47,7 +47,7 @@ export class History {
       // we have the latest changes, no need to `applyLatest`, which is done within `History.push`
       this.undoStack.push(entry.inverse());
 
-      if (!entry.elementsChange.isEmpty()) {
+      if (!entry.elements.isEmpty()) {
         // don't reset redo stack on local appState changes,
         // as a simple click (unselect) could lead to losing all the redo entries
         // only reset on non empty elements changes!
@@ -98,17 +98,12 @@ export class History {
       // iterate through the history entries in case they result in no visible changes
       while (historyEntry) {
         try {
-          // skip re-recording the history entry, as it gets emitted and is manually pushed to the undo / redo stack
+          // skip re-recording the history entry, as it gets emitted and tries to be pushed again to the undo / redo stack
           Object.assign(historyEntry, { skipRecording: true });
-          // CFDO: consider encapsulating element & appState update inside applyIncrement
           [nextElements, nextAppState, containsVisibleChange] =
-            this.store.applyIncrementTo(
-              historyEntry,
-              nextElements,
-              nextAppState,
-            );
+            this.store.applyDeltaTo(historyEntry, nextElements, nextAppState);
         } finally {
-          // make sure to always push, even if the increment is corrupted
+          // make sure to always push, even if the delta is corrupted
           push(historyEntry);
         }
 

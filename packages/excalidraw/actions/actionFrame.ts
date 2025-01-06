@@ -45,7 +45,7 @@ export const actionSelectAllElementsInFrame = register({
             return acc;
           }, {} as Record<ExcalidrawElement["id"], true>),
         },
-        storeAction: StoreAction.CAPTURE,
+        storeAction: StoreAction.RECORD,
       };
     }
 
@@ -76,7 +76,7 @@ export const actionRemoveAllElementsFromFrame = register({
             [selectedElement.id]: true,
           },
         },
-        storeAction: StoreAction.CAPTURE,
+        storeAction: StoreAction.RECORD,
       };
     }
 

@@ -25,7 +25,7 @@ export const actionLink = register({
         showHyperlinkPopup: "editor",
         openMenu: null,
       },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   trackEvent: { category: "hyperlink", action: "click" },

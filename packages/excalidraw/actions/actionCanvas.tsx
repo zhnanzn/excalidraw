@@ -55,7 +55,7 @@ export const actionChangeViewBackgroundColor = register({
     return {
       appState: { ...appState, ...value },
       storeAction: !!value.viewBackgroundColor
-        ? StoreAction.CAPTURE
+        ? StoreAction.RECORD
         : StoreAction.NONE,
     };
   },
@@ -114,7 +114,7 @@ export const actionClearCanvas = register({
             ? { ...appState.activeTool, type: "selection" }
             : appState.activeTool,
       },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
 });
@@ -509,7 +509,7 @@ export const actionToggleEraserTool = register({
         activeEmbeddable: null,
         activeTool,
       },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) => event.key === KEYS.E,
@@ -548,7 +548,7 @@ export const actionToggleHandTool = register({
         activeEmbeddable: null,
         activeTool,
       },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>

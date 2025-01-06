@@ -261,7 +261,7 @@ export const actionLoadScene = register({
         elements: loadedElements,
         appState: loadedAppState,
         files,
-        storeAction: StoreAction.CAPTURE,
+        storeAction: StoreAction.RECORD,
       };
     } catch (error: any) {
       if (error?.name === "AbortError") {

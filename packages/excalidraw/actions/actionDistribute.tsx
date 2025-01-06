@@ -60,7 +60,7 @@ export const distributeHorizontally = register({
         space: "between",
         axis: "x",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>
@@ -91,7 +91,7 @@ export const distributeVertically = register({
         space: "between",
         axis: "y",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>

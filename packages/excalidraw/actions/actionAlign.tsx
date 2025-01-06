@@ -72,7 +72,7 @@ export const actionAlignTop = register({
         position: "start",
         axis: "y",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>
@@ -105,7 +105,7 @@ export const actionAlignBottom = register({
         position: "end",
         axis: "y",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>
@@ -138,7 +138,7 @@ export const actionAlignLeft = register({
         position: "start",
         axis: "x",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>
@@ -171,7 +171,7 @@ export const actionAlignRight = register({
         position: "end",
         axis: "x",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>
@@ -204,7 +204,7 @@ export const actionAlignVerticallyCentered = register({
         position: "center",
         axis: "y",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => (
@@ -233,7 +233,7 @@ export const actionAlignHorizontallyCentered = register({
         position: "center",
         axis: "x",
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => (

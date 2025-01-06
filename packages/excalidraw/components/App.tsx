@@ -416,7 +416,7 @@ import { COLOR_PALETTE } from "../colors";
 import { ElementCanvasButton } from "./MagicButton";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import FollowMode from "./FollowMode/FollowMode";
-import { Store, StoreAction } from "../store";
+import { Store, StoreAction, StoreIncrement } from "../store";
 import { AnimationFrameHandler } from "../animation-frame-handler";
 import { AnimatedTrail } from "../animated-trail";
 import { LaserTrails } from "../laser-trails";
@@ -1797,7 +1797,7 @@ class App extends React.Component<AppProps, AppState> {
 
   public getSceneElementsMapIncludingDeleted = () => {
     return this.scene.getElementsMapIncludingDeleted();
-  }
+  };
 
   public getSceneElements = () => {
     return this.scene.getNonDeletedElements();
@@ -2071,12 +2071,12 @@ class App extends React.Component<AppProps, AppState> {
           if (shouldUpdateStrokeColor) {
             this.syncActionResult({
               appState: { ...this.state, currentItemStrokeColor: color },
-              storeAction: StoreAction.CAPTURE,
+              storeAction: StoreAction.RECORD,
             });
           } else {
             this.syncActionResult({
               appState: { ...this.state, currentItemBackgroundColor: color },
-              storeAction: StoreAction.CAPTURE,
+              storeAction: StoreAction.RECORD,
             });
           }
         } else {
@@ -2090,7 +2090,7 @@ class App extends React.Component<AppProps, AppState> {
               }
               return el;
             }),
-            storeAction: StoreAction.CAPTURE,
+            storeAction: StoreAction.RECORD,
           });
         }
       },
@@ -2112,9 +2112,9 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     if (actionResult.storeAction === StoreAction.UPDATE) {
-      this.store.shouldUpdateSnapshot();
-    } else if (actionResult.storeAction === StoreAction.CAPTURE) {
-      this.store.shouldCaptureIncrement();
+      this.store.scheduleUpdate();
+    } else if (actionResult.storeAction === StoreAction.RECORD) {
+      this.store.scheduleRecording();
     }
 
     let didUpdate = false;
@@ -2437,7 +2437,10 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.store.onStoreIncrementEmitter.on((increment) => {
-      this.history.record(increment);
+      if (StoreIncrement.isDurable(increment)) {
+        this.history.record(increment.delta);
+      }
+
       this.props.onIncrement?.(increment);
     });
 
@@ -3268,7 +3271,7 @@ class App extends React.Component<AppProps, AppState> {
       this.addMissingFiles(opts.files);
     }
 
-    this.store.shouldCaptureIncrement();
+    this.store.scheduleRecording();
 
     const nextElementsToSelect =
       excludeElementsInFramesFromSelection(newElements);
@@ -3525,7 +3528,7 @@ class App extends React.Component<AppProps, AppState> {
       PLAIN_PASTE_TOAST_SHOWN = true;
     }
 
-    this.store.shouldCaptureIncrement();
+    this.store.scheduleRecording();
   }
 
   setAppState: React.Component<any, AppState>["setState"] = (
@@ -3851,16 +3854,20 @@ class App extends React.Component<AppProps, AppState> {
 
         // WARN: store action always performs deep clone of changed elements, for ephemeral remote updates (i.e. remote dragging, resizing, drawing) we might consider doing something smarter
         // do NOT schedule store actions (execute after re-render), as it might cause unexpected concurrency issues if not handled well
-        if (sceneData.storeAction === StoreAction.CAPTURE) {
-          this.store.captureIncrement(
+        if (sceneData.storeAction === StoreAction.RECORD) {
+          this.store.recordDurableIncrement(
             nextCommittedElements,
             nextCommittedAppState,
           );
         } else if (sceneData.storeAction === StoreAction.UPDATE) {
-          this.store.updateSnapshot(
+          const nextSnapshot = this.store.produceEphemeralIncrement(
             nextCommittedElements,
             nextCommittedAppState,
           );
+
+          if (nextSnapshot) {
+            this.store.snapshot = nextSnapshot;
+          }
         }
       }
 
@@ -4317,7 +4324,7 @@ class App extends React.Component<AppProps, AppState> {
                 this.state.editingLinearElement.elementId !==
                   selectedElements[0].id
               ) {
-                this.store.shouldCaptureIncrement();
+                this.store.scheduleRecording();
                 if (!isElbowArrow(selectedElement)) {
                   this.setState({
                     editingLinearElement: new LinearElementEditor(
@@ -4521,7 +4528,7 @@ class App extends React.Component<AppProps, AppState> {
     if (!event.altKey) {
       if (this.flowChartNavigator.isExploring) {
         this.flowChartNavigator.clear();
-        this.syncActionResult({ storeAction: StoreAction.CAPTURE });
+        this.syncActionResult({ storeAction: StoreAction.RECORD });
       }
     }
 
@@ -4568,7 +4575,7 @@ class App extends React.Component<AppProps, AppState> {
         }
 
         this.flowChartCreator.clear();
-        this.syncActionResult({ storeAction: StoreAction.CAPTURE });
+        this.syncActionResult({ storeAction: StoreAction.RECORD });
       }
     }
   });
@@ -4629,7 +4636,7 @@ class App extends React.Component<AppProps, AppState> {
       } as const;
 
       if (nextActiveTool.type === "freedraw") {
-        this.store.shouldCaptureIncrement();
+        this.store.scheduleRecording();
       }
 
       if (nextActiveTool.type !== "selection") {
@@ -4832,7 +4839,7 @@ class App extends React.Component<AppProps, AppState> {
           ]);
         }
         if (!isDeleted || isExistingElement) {
-          this.store.shouldCaptureIncrement();
+          this.store.scheduleRecording();
         }
 
         flushSync(() => {
@@ -5238,7 +5245,7 @@ class App extends React.Component<AppProps, AppState> {
   };
 
   private startImageCropping = (image: ExcalidrawImageElement) => {
-    this.store.shouldCaptureIncrement();
+    this.store.scheduleRecording();
     this.setState({
       croppingElementId: image.id,
     });
@@ -5246,7 +5253,7 @@ class App extends React.Component<AppProps, AppState> {
 
   private finishImageCropping = () => {
     if (this.state.croppingElementId) {
-      this.store.shouldCaptureIncrement();
+      this.store.scheduleRecording();
       this.setState({
         croppingElementId: null,
       });
@@ -5276,7 +5283,7 @@ class App extends React.Component<AppProps, AppState> {
             selectedElements[0].id) &&
         !isElbowArrow(selectedElements[0])
       ) {
-        this.store.shouldCaptureIncrement();
+        this.store.scheduleRecording();
         this.setState({
           editingLinearElement: new LinearElementEditor(selectedElements[0]),
         });
@@ -5306,7 +5313,7 @@ class App extends React.Component<AppProps, AppState> {
         getSelectedGroupIdForElement(hitElement, this.state.selectedGroupIds);
 
       if (selectedGroupId) {
-        this.store.shouldCaptureIncrement();
+        this.store.scheduleRecording();
         this.setState((prevState) => ({
           ...prevState,
           ...selectGroupsForSelectedElements(
@@ -8654,7 +8661,7 @@ class App extends React.Component<AppProps, AppState> {
 
       if (isLinearElement(newElement)) {
         if (newElement!.points.length > 1) {
-          this.store.shouldCaptureIncrement();
+          this.store.scheduleRecording();
         }
         const pointerCoords = viewportCoordsToSceneCoords(
           childEvent,
@@ -8911,7 +8918,7 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (resizingElement) {
-        this.store.shouldCaptureIncrement();
+        this.store.scheduleRecording();
       }
 
       if (resizingElement && isInvisiblySmallElement(resizingElement)) {
@@ -9238,7 +9245,7 @@ class App extends React.Component<AppProps, AppState> {
           this.state.selectedElementIds,
         )
       ) {
-        this.store.shouldCaptureIncrement();
+        this.store.scheduleRecording();
       }
 
       if (
@@ -9326,7 +9333,7 @@ class App extends React.Component<AppProps, AppState> {
     this.elementsPendingErasure = new Set();
 
     if (didChange) {
-      this.store.shouldCaptureIncrement();
+      this.store.scheduleRecording();
       this.scene.replaceAllElements(elements);
     }
   };
@@ -9880,7 +9887,7 @@ class App extends React.Component<AppProps, AppState> {
                 isLoading: false,
               },
               replaceFiles: true,
-              storeAction: StoreAction.CAPTURE,
+              storeAction: StoreAction.RECORD,
             });
             return;
           } catch (error: any) {
@@ -9998,8 +10005,15 @@ class App extends React.Component<AppProps, AppState> {
         // restore the fractional indices by mutating elements
         syncInvalidIndices(elements.concat(ret.data.elements));
 
+        const nextSnapshot = this.store.produceEphemeralIncrement(
+          arrayToMap(elements),
+          this.state,
+        );
+
         // update the store snapshot for old elements, otherwise we would end up with duplicated fractional indices on undo
-        this.store.updateSnapshot(arrayToMap(elements), this.state);
+        if (nextSnapshot) {
+          this.store.snapshot = nextSnapshot;
+        }
 
         this.setState({ isLoading: true });
         this.syncActionResult({
@@ -10009,7 +10023,7 @@ class App extends React.Component<AppProps, AppState> {
             isLoading: false,
           },
           replaceFiles: true,
-          storeAction: StoreAction.CAPTURE,
+          storeAction: StoreAction.RECORD,
         });
       } else if (ret.type === MIME_TYPES.excalidrawlib) {
         await this.library

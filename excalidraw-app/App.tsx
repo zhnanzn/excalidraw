@@ -105,7 +105,11 @@ import Trans from "../packages/excalidraw/components/Trans";
 import { ShareDialog, shareDialogStateAtom } from "./share/ShareDialog";
 import CollabError, { collabErrorIndicatorAtom } from "./collab/CollabError";
 import type { RemoteExcalidrawElement } from "../packages/excalidraw/data/reconcile";
-import type { StoreIncrement } from "../packages/excalidraw/store";
+import type {
+  DurableStoreIncrement,
+  EphemeralStoreIncrement,
+  StoreDelta,
+} from "../packages/excalidraw/store";
 import {
   CommandPalette,
   DEFAULT_CATEGORIES,
@@ -366,9 +370,9 @@ const ExcalidrawWrapper = () => {
   const [syncAPI] = useAtom(syncApiAtom);
   const [nextVersion, setNextVersion] = useState(-1);
   const currentVersion = useRef(-1);
-  const [acknowledgedIncrements, setAcknowledgedIncrements] = useState<
-    StoreIncrement[]
-  >([]);
+  const [acknowledgedDeltas, setAcknowledgedDeltas] = useState<StoreDelta[]>(
+    [],
+  );
   const [isCollaborating] = useAtomWithInitialValue(isCollaboratingAtom, () => {
     return isCollaborationLink(window.location.href);
   });
@@ -376,7 +380,7 @@ const ExcalidrawWrapper = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setAcknowledgedIncrements([...(syncAPI?.acknowledgedIncrements ?? [])]);
+      setAcknowledgedDeltas([...(syncAPI?.acknowledgedDeltas ?? [])]);
     }, 250);
 
     syncAPI?.connect();
@@ -506,7 +510,7 @@ const ExcalidrawWrapper = () => {
             excalidrawAPI.updateScene({
               ...data.scene,
               ...restore(data.scene, null, null, { repairBindings: true }),
-              storeAction: StoreAction.CAPTURE,
+              storeAction: StoreAction.RECORD,
             });
           }
         });
@@ -683,19 +687,20 @@ const ExcalidrawWrapper = () => {
     }
   };
 
-  const onIncrement = (increment: StoreIncrement) => {
-    // ephemerals are not part of this (which is alright)
-    // - wysiwyg, dragging elements / points, mouse movements, etc.
-    const { elementsChange } = increment;
+  const onIncrement = (
+    increment: DurableStoreIncrement | EphemeralStoreIncrement,
+  ) => {
+    console.log(increment);
+    // const { elements: elementsDelta } = increment;
 
-    // CFDO: some appState like selections should also be transfered (we could even persist it)
-    if (!elementsChange.isEmpty()) {
-      try {
-        syncAPI?.push(increment);
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    // // CFDO: some appState like selections should also be transfered (we could even persist it)
+    // if (!elementsDelta.isEmpty()) {
+    //   syncAPI?.push);
+    //     try {
+    //   } catch (e) {
+    //     console.error(e);
+    //   }
+    // }
   };
 
   const [latestShareableLink, setLatestShareableLink] = useState<string | null>(
@@ -825,23 +830,23 @@ const ExcalidrawWrapper = () => {
       excalidrawAPI?.getSceneElements().map((x) => [x.id, x]),
     );
 
-    let increments: StoreIncrement[] = [];
+    let increments: StoreDelta[] = [];
 
     const goingLeft =
       currentVersion.current === -1 || value - currentVersion.current <= 0;
 
     if (goingLeft) {
-      increments = acknowledgedIncrements
+      increments = acknowledgedDeltas
         .slice(value)
         .reverse()
         .map((x) => x.inverse());
     } else {
       increments =
-        acknowledgedIncrements.slice(currentVersion.current, value) ?? [];
+        acknowledgedDeltas.slice(currentVersion.current, value) ?? [];
     }
 
     for (const increment of increments) {
-      [elements] = increment.elementsChange.applyTo(
+      [elements] = increment.elements.applyTo(
         elements as SceneElementsMap,
         excalidrawAPI?.store.snapshot.elements!,
       );
@@ -853,13 +858,13 @@ const ExcalidrawWrapper = () => {
         viewModeEnabled: value !== -1,
       },
       elements: Array.from(elements.values()),
-      storeAction: StoreAction.UPDATE,
+      storeAction: StoreAction.NONE,
     });
 
     currentVersion.current = value;
   }, 0);
 
-  const latestVersion = acknowledgedIncrements.length;
+  const latestVersion = acknowledgedDeltas.length;
 
   return (
     <div
@@ -885,7 +890,7 @@ const ExcalidrawWrapper = () => {
 
           // CFDO: should be disabled when offline! (later we could have speculative changes in the versioning log as well)
           // CFDO: in safari the whole canvas gets selected when dragging
-          if (value !== acknowledgedIncrements.length) {
+          if (value !== acknowledgedDeltas.length) {
             // don't listen to updates in the detached mode
             syncAPI?.disconnect();
             nextValue = value as number;

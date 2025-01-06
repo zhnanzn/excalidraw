@@ -25,7 +25,7 @@ export const actionToggleCropEditor = register({
         isCropping: false,
         croppingElementId: selectedElement.id,
       },
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   predicate: (elements, appState, _, app) => {

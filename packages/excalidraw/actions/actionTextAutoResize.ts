@@ -42,7 +42,7 @@ export const actionTextAutoResize = register({
         }
         return element;
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
 });

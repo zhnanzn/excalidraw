@@ -1,11 +1,11 @@
-import type { StoreIncrement } from "../store";
+import type { StoreDelta } from "../store";
 import type { DTO } from "../utility-types";
 
-export type CLIENT_INCREMENT = DTO<StoreIncrement>;
+export type CLIENT_DELTA = DTO<StoreDelta>;
 
 export type RELAY_PAYLOAD = { buffer: ArrayBuffer };
 export type PULL_PAYLOAD = { lastAcknowledgedVersion: number };
-export type PUSH_PAYLOAD = CLIENT_INCREMENT;
+export type PUSH_PAYLOAD = CLIENT_DELTA;
 
 export type CHUNK_INFO = {
   id: string;
@@ -25,22 +25,22 @@ export type CLIENT_MESSAGE = { chunkInfo: CHUNK_INFO } & (
   | { type: "push"; payload: PUSH_PAYLOAD }
 );
 
-export type SERVER_INCREMENT = { id: string; version: number; payload: string };
+export type SERVER_DELTA = { id: string; version: number; payload: string };
 export type SERVER_MESSAGE =
   | {
       type: "relayed";
       // CFDO: should likely be just elements
-      // payload: { increments: Array<CLIENT_INCREMENT> } | RELAY_PAYLOAD;
+      // payload: { deltas: Array<CLIENT_DELTA> } | RELAY_PAYLOAD;
     }
-  | { type: "acknowledged"; payload: { increments: Array<SERVER_INCREMENT> } }
+  | { type: "acknowledged"; payload: { deltas: Array<SERVER_DELTA> } }
   | {
       type: "rejected";
-      payload: { increments: Array<CLIENT_INCREMENT>; message: string };
+      payload: { deltas: Array<CLIENT_DELTA>; message: string };
     };
 
-export interface IncrementsRepository {
-  save(increment: CLIENT_INCREMENT): SERVER_INCREMENT | null;
-  getAllSinceVersion(version: number): Array<SERVER_INCREMENT>;
+export interface DeltasRepository {
+  save(delta: CLIENT_DELTA): SERVER_DELTA | null;
+  getAllSinceVersion(version: number): Array<SERVER_DELTA>;
   getLastVersion(): number;
 }
 

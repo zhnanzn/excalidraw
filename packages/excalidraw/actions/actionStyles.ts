@@ -159,7 +159,7 @@ export const actionPasteStyles = register({
         }
         return element;
       }),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>

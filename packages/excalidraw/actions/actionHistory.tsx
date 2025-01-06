@@ -9,7 +9,6 @@ import { KEYS, matchKey } from "../keys";
 import { arrayToMap } from "../utils";
 import { isWindows } from "../constants";
 import type { SceneElementsMap } from "../element/types";
-import type { Store } from "../store";
 import { StoreAction } from "../store";
 import { useEmitter } from "../hooks/useEmitter";
 

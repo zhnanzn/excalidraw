@@ -47,7 +47,7 @@ export const actionFlipHorizontal = register({
         app,
       ),
       appState,
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) => event.shiftKey && event.code === CODES.H,
@@ -72,7 +72,7 @@ export const actionFlipVertical = register({
         app,
       ),
       appState,
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     };
   },
   keyTest: (event) =>

@@ -89,7 +89,7 @@ describe("collaboration", () => {
 
     API.updateScene({
       elements: syncInvalidIndices([rect1, rect2]),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     });
 
     API.updateScene({
@@ -97,7 +97,7 @@ describe("collaboration", () => {
         rect1,
         newElementWith(h.elements[1], { isDeleted: true }),
       ]),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     });
 
     await waitFor(() => {
@@ -182,7 +182,7 @@ describe("collaboration", () => {
         h.elements[0],
         newElementWith(h.elements[1], { x: 100 }),
       ]),
-      storeAction: StoreAction.CAPTURE,
+      storeAction: StoreAction.RECORD,
     });
 
     await waitFor(() => {
