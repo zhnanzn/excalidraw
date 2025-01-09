@@ -27,7 +27,7 @@ export const actionSendBackward = register({
     return {
       elements: moveOneLeft(elements, appState),
       appState,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyPriority: 40,
@@ -57,7 +57,7 @@ export const actionBringForward = register({
     return {
       elements: moveOneRight(elements, appState),
       appState,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyPriority: 40,
@@ -87,7 +87,7 @@ export const actionSendToBack = register({
     return {
       elements: moveAllLeft(elements, appState),
       appState,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) =>
@@ -125,7 +125,7 @@ export const actionBringToFront = register({
     return {
       elements: moveAllRight(elements, appState),
       appState,
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) =>

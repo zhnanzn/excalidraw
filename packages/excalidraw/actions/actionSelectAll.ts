@@ -51,7 +51,7 @@ export const actionSelectAll = register({
             ? new LinearElementEditor(elements[0])
             : null,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.A,

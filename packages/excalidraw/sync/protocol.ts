@@ -1,11 +1,12 @@
-import type { StoreDelta } from "../store";
+import type { StoreChange, StoreDelta } from "../store";
 import type { DTO } from "../utility-types";
 
-export type CLIENT_DELTA = DTO<StoreDelta>;
+export type DELTA = DTO<StoreDelta>;
+export type CHANGE = DTO<StoreChange>;
 
-export type RELAY_PAYLOAD = { buffer: ArrayBuffer };
+export type RELAY_PAYLOAD = CHANGE;
+export type PUSH_PAYLOAD = DELTA;
 export type PULL_PAYLOAD = { lastAcknowledgedVersion: number };
-export type PUSH_PAYLOAD = CLIENT_DELTA;
 
 export type CHUNK_INFO = {
   id: string;
@@ -29,17 +30,16 @@ export type SERVER_DELTA = { id: string; version: number; payload: string };
 export type SERVER_MESSAGE =
   | {
       type: "relayed";
-      // CFDO: should likely be just elements
-      // payload: { deltas: Array<CLIENT_DELTA> } | RELAY_PAYLOAD;
+      payload: RELAY_PAYLOAD;
     }
   | { type: "acknowledged"; payload: { deltas: Array<SERVER_DELTA> } }
   | {
       type: "rejected";
-      payload: { deltas: Array<CLIENT_DELTA>; message: string };
+      payload: { deltas: Array<DELTA>; message: string };
     };
 
 export interface DeltasRepository {
-  save(delta: CLIENT_DELTA): SERVER_DELTA | null;
+  save(delta: DELTA): SERVER_DELTA | null;
   getAllSinceVersion(version: number): Array<SERVER_DELTA>;
   getLastVersion(): number;
 }

@@ -57,7 +57,7 @@ import {
  *
  * Keeping it as pure object (without transient state, side-effects, etc.), so we won't have to instantiate it on load.
  */
-class Delta<T> {
+export class Delta<T> {
   private constructor(
     public readonly deleted: Partial<T>,
     public readonly inserted: Partial<T>,

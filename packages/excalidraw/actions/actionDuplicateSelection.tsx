@@ -52,7 +52,7 @@ export const actionDuplicateSelection = register({
         return {
           elements,
           appState: newAppState,
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         };
       } catch {
         return false;
@@ -61,7 +61,7 @@ export const actionDuplicateSelection = register({
 
     return {
       ...duplicateElements(elements, appState),
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.D,

@@ -1,8 +1,4 @@
-import type {
-  DeltasRepository,
-  CLIENT_DELTA,
-  SERVER_DELTA,
-} from "../sync/protocol";
+import type { DeltasRepository, DELTA, SERVER_DELTA } from "../sync/protocol";
 
 // CFDO: add senderId, possibly roomId as well
 export class DurableDeltasRepository implements DeltasRepository {
@@ -25,7 +21,7 @@ export class DurableDeltasRepository implements DeltasRepository {
 		);`);
   }
 
-  public save(delta: CLIENT_DELTA): SERVER_DELTA | null {
+  public save(delta: DELTA): SERVER_DELTA | null {
     return this.storage.transactionSync(() => {
       const existingDelta = this.getById(delta.id);
 

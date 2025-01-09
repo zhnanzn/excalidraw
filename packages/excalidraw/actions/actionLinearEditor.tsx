@@ -51,7 +51,7 @@ export const actionToggleLinearEditor = register({
         ...appState,
         editingLinearElement,
       },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   PanelComponent: ({ appState, updateData, app }) => {

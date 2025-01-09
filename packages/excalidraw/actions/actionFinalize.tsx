@@ -52,7 +52,7 @@ export const actionFinalize = register({
             cursorButton: "up",
             editingLinearElement: null,
           },
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         };
       }
     }
@@ -199,7 +199,7 @@ export const actionFinalize = register({
         pendingImageElementId: null,
       },
       // TODO: #7348 we should not capture everything, but if we don't, it leads to incosistencies -> revisit
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     };
   },
   keyTest: (event, appState) =>

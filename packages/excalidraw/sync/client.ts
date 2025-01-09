@@ -10,14 +10,11 @@ import {
   type MetadataRepository,
   type DeltasRepository,
 } from "./queue";
-import { StoreDelta } from "../store";
+import { StoreAction, StoreDelta } from "../store";
+import type { StoreChange } from "../store";
 import type { ExcalidrawImperativeAPI } from "../types";
 import type { SceneElementsMap } from "../element/types";
-import type {
-  CLIENT_DELTA,
-  CLIENT_MESSAGE_RAW,
-  SERVER_DELTA,
-} from "./protocol";
+import type { CLIENT_MESSAGE_RAW, SERVER_DELTA, CHANGE } from "./protocol";
 import { debounce } from "../utils";
 import { randomId } from "../random";
 
@@ -123,7 +120,7 @@ class SocketClient {
 
   public send(message: {
     type: "relay" | "pull" | "push";
-    payload: any;
+    payload: Record<string, unknown>;
   }): void {
     if (this.isOffline) {
       // connection opened, don't let the WS buffer the messages,
@@ -139,6 +136,7 @@ class SocketClient {
 
     const { type, payload } = message;
 
+    // CFDO: could be slowish for large payloads, thing about a better solution (i.e. msgpack 10x faster, 2x smaller)
     const stringifiedPayload = JSON.stringify(payload);
     const payloadSize = new TextEncoder().encode(stringifiedPayload).byteLength;
 
@@ -202,7 +200,7 @@ export class SyncClient {
     : "test_room_prod";
 
   private readonly api: ExcalidrawImperativeAPI;
-  private readonly queue: SyncQueue;
+  private readonly localDeltas: SyncQueue;
   private readonly metadata: MetadataRepository;
   private readonly client: SocketClient;
 
@@ -237,7 +235,7 @@ export class SyncClient {
   ) {
     this.api = api;
     this.metadata = repository;
-    this.queue = queue;
+    this.localDeltas = queue;
     this.lastAcknowledgedVersion = options.lastAcknowledgedVersion;
     this.client = new SocketClient(options.host, options.roomId, {
       onOpen: this.onOpen,
@@ -284,24 +282,25 @@ export class SyncClient {
 
   public push(delta?: StoreDelta): void {
     if (delta) {
-      this.queue.add(delta);
+      this.localDeltas.add(delta);
     }
 
     // re-send all already queued deltas
-    for (const queuedDeltas of this.queue.getAll()) {
+    for (const delta of this.localDeltas.getAll()) {
       this.client.send({
         type: "push",
         payload: {
-          ...queuedDeltas,
+          ...delta,
         },
       });
     }
   }
 
-  public relay(buffer: ArrayBuffer): void {
+  // CFDO: should be throttled!
+  public relay(change: StoreChange): void {
     this.client.send({
       type: "relay",
-      payload: { buffer },
+      payload: { ...change },
     });
   }
   // #endregion
@@ -341,18 +340,52 @@ export class SyncClient {
     }
   };
 
-  // CFDO: refactor by applying all operations to store, not to the elements
-  private handleAcknowledged = (payload: { deltas: Array<SERVER_DELTA> }) => {
-    let nextAcknowledgedVersion = this.lastAcknowledgedVersion;
-    let elements = new Map(
-      // CFDO: retrieve the map already
+  private handleRelayed = (payload: CHANGE) => {
+    // CFDO: retrieve the map already
+    const elements = new Map(
       this.api.getSceneElementsIncludingDeleted().map((el) => [el.id, el]),
     ) as SceneElementsMap;
 
     try {
-      const { deltas: remoteDeltas } = payload;
+      const { elements: relayedElements } = payload;
 
-      // apply remote deltas
+      for (const [id, relayedElement] of Object.entries(relayedElements)) {
+        const existingElement = elements.get(id);
+
+        if (
+          !existingElement || // new element
+          existingElement.version < relayedElement.version // updated element
+        ) {
+          elements.set(id, relayedElement);
+        }
+      }
+
+      // CFDO: do I still need to filter uncomitted elements?
+      this.api.store.updateSnapshot(elements, undefined);
+      this.api.updateScene({
+        elements: Array.from(elements.values()),
+        storeAction: StoreAction.NONE,
+      });
+    } catch (e) {
+      console.error("Failed to apply relayed change:", e);
+    }
+  };
+
+  // CFDO: refactor by applying all operations to store, not to the elements
+  private handleAcknowledged = (payload: { deltas: Array<SERVER_DELTA> }) => {
+    let prevSnapshot = this.api.store.snapshot;
+
+    try {
+      const remoteDeltas = [...payload.deltas];
+      const applicableDeltas: Array<StoreDelta> = [];
+      const appState = this.api.getAppState();
+
+      let nextAcknowledgedVersion = this.lastAcknowledgedVersion;
+      let nextElements = new Map(
+        // CFDO: retrieve the map already
+        this.api.getSceneElementsIncludingDeleted().map((el) => [el.id, el]),
+      ) as SceneElementsMap;
+
       for (const { id, version, payload } of remoteDeltas) {
         // CFDO: temporary to load all deltas on init
         this.acknowledgedDeltasMap.set(id, {
@@ -360,55 +393,59 @@ export class SyncClient {
           version,
         });
 
-        // we've already applied this delta
+        // we've already applied this delta!
         if (version <= nextAcknowledgedVersion) {
           continue;
         }
 
-        if (version === nextAcknowledgedVersion + 1) {
-          nextAcknowledgedVersion = version;
-        } else {
-          // it's fine to apply deltas our of order,
-          // as they are idempontent, so that we can re-apply them again,
-          // as long as we don't mark their version as acknowledged
-          console.debug(
+        // CFDO:strictly checking for out of order deltas; might be relaxed if it becomes a problem
+        if (version !== nextAcknowledgedVersion + 1) {
+          throw new Error(
             `Received out of order delta, expected "${
               nextAcknowledgedVersion + 1
             }", but received "${version}"`,
           );
         }
 
-        // local delta shall not have to be applied again
-        if (this.queue.has(id)) {
-          this.queue.remove(id);
+        if (this.localDeltas.has(id)) {
+          // local delta does not have to be applied again
+          this.localDeltas.remove(id);
         } else {
-          // apply remote delta with higher version than the last acknowledged one
+          // this is a new remote delta, adding it to the list of applicable deltas
           const remoteDelta = StoreDelta.load(payload);
-          [elements] = remoteDelta.elements.applyTo(
-            elements,
-            this.api.store.snapshot.elements,
-          );
+          applicableDeltas.push(remoteDelta);
         }
 
-        // apply local deltas
-        for (const localDelta of this.queue.getAll()) {
-          // CFDO: in theory only necessary when remote deltas modified same element properties!
-          [elements] = localDelta.elements.applyTo(
-            elements,
-            this.api.store.snapshot.elements,
-          );
-        }
-
-        this.api.updateScene({
-          elements: Array.from(elements.values()),
-          storeAction: "update",
-        });
+        nextAcknowledgedVersion = version;
       }
+
+      // adding all yet unacknowledged local deltas
+      const localDeltas = this.localDeltas.getAll();
+      applicableDeltas.push(...localDeltas);
+
+      for (const delta of applicableDeltas) {
+        [nextElements] = this.api.store.applyDeltaTo(
+          delta,
+          nextElements,
+          appState,
+        );
+
+        prevSnapshot = this.api.store.snapshot;
+      }
+
+      // CFDO: I still need to filter out uncomitted elements
+      // I still need to update snapshot with the new elements
+      this.api.updateScene({
+        elements: Array.from(nextElements.values()),
+        storeAction: StoreAction.NONE,
+      });
 
       this.lastAcknowledgedVersion = nextAcknowledgedVersion;
     } catch (e) {
       console.error("Failed to apply acknowledged deltas:", e);
-      // CFDO: might just be on error
+      // rollback to the previous snapshot, so that we don't end up in an incosistent state
+      this.api.store.snapshot = prevSnapshot;
+      // schedule another fresh pull in case of a failure
       this.schedulePull();
     }
   };
@@ -419,11 +456,6 @@ export class SyncClient {
   }) => {
     // handle rejected deltas
     console.error("Rejected message received:", payload);
-  };
-
-  private handleRelayed = (payload: { deltas: Array<CLIENT_DELTA> }) => {
-    // apply relayed deltas / buffer
-    console.log("Relayed message received:", payload);
   };
 
   private schedulePull = debounce(() => this.pull(), 1000);

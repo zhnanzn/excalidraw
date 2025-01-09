@@ -132,7 +132,7 @@ const StatsDragInput = <
         originalAppState: appState,
         setInputValue: (value) => setInputValue(String(value)),
       });
-      app.syncActionResult({ storeAction: StoreAction.RECORD });
+      app.syncActionResult({ storeAction: StoreAction.CAPTURE });
     }
   };
 
@@ -276,7 +276,7 @@ const StatsDragInput = <
                 false,
               );
 
-              app.syncActionResult({ storeAction: StoreAction.RECORD });
+              app.syncActionResult({ storeAction: StoreAction.CAPTURE });
 
               lastPointer = null;
               accumulatedChange = 0;

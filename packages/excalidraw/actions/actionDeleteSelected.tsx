@@ -140,7 +140,7 @@ export const actionDeleteSelected = register({
             ...nextAppState,
             editingLinearElement: null,
           },
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         };
       }
 
@@ -176,7 +176,7 @@ export const actionDeleteSelected = register({
                 : [0],
           },
         },
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       };
     }
     let { elements: nextElements, appState: nextAppState } =
@@ -200,7 +200,7 @@ export const actionDeleteSelected = register({
         getNonDeletedElements(elements),
         appState,
       )
-        ? StoreAction.RECORD
+        ? StoreAction.CAPTURE
         : StoreAction.NONE,
     };
   },

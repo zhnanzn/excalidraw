@@ -216,7 +216,7 @@ describe("history", () => {
 
       API.updateScene({
         elements: [rect1, rect2],
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
 
       expect(API.getUndoStack().length).toBe(1);
@@ -228,7 +228,7 @@ describe("history", () => {
 
       API.updateScene({
         elements: [rect1, rect2],
-        storeAction: StoreAction.RECORD, // even though the flag is on, same elements are passed, nothing to commit
+        storeAction: StoreAction.CAPTURE, // even though the flag is on, same elements are passed, nothing to commit
       });
       expect(API.getUndoStack().length).toBe(1);
       expect(API.getRedoStack().length).toBe(0);
@@ -596,7 +596,7 @@ describe("history", () => {
         appState: {
           name: "New name",
         },
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
 
       expect(API.getUndoStack().length).toBe(1);
@@ -607,7 +607,7 @@ describe("history", () => {
         appState: {
           viewBackgroundColor: "#000",
         },
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
       expect(API.getUndoStack().length).toBe(2);
       expect(API.getRedoStack().length).toBe(0);
@@ -620,7 +620,7 @@ describe("history", () => {
           name: "New name",
           viewBackgroundColor: "#000",
         },
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
       expect(API.getUndoStack().length).toBe(2);
       expect(API.getRedoStack().length).toBe(0);
@@ -1327,7 +1327,7 @@ describe("history", () => {
 
         API.updateScene({
           elements: [rect1, text, rect2],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // bind text1 to rect1
@@ -2046,7 +2046,7 @@ describe("history", () => {
 
       API.updateScene({
         elements: [rect, diamond],
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
 
       // Connect the arrow
@@ -2095,7 +2095,7 @@ describe("history", () => {
             } as FixedPointBinding,
           },
         ],
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
 
       Keyboard.undo();
@@ -2143,7 +2143,7 @@ describe("history", () => {
           newElementWith(h.elements[0], { groupIds: ["A"] }),
           newElementWith(h.elements[1], { groupIds: ["A"] }),
         ],
-        storeAction: StoreAction.RECORD,
+        storeAction: StoreAction.CAPTURE,
       });
 
       const rect3 = API.createElement({ type: "rectangle", groupIds: ["B"] });
@@ -3300,7 +3300,7 @@ describe("history", () => {
               containerId: container.id,
             }),
           ],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         Keyboard.undo();
@@ -3387,7 +3387,7 @@ describe("history", () => {
               containerId: container.id,
             }),
           ],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         Keyboard.undo();
@@ -3490,7 +3490,7 @@ describe("history", () => {
               containerId: container.id,
             }),
           ],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         Keyboard.undo();
@@ -3585,7 +3585,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [container],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -3646,7 +3646,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [text],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -3706,7 +3706,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [container],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -3813,7 +3813,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [text],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -3919,7 +3919,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [container],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -3976,7 +3976,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [text],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -4045,7 +4045,7 @@ describe("history", () => {
               angle: 90 as Radians,
             }),
           ],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         Keyboard.undo();
@@ -4163,7 +4163,7 @@ describe("history", () => {
               angle: 90 as Radians,
             }),
           ],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         Keyboard.undo();
@@ -4269,7 +4269,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [rect1, rect2],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         mouse.reset();
@@ -4686,7 +4686,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [arrow],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate remote update
@@ -4927,7 +4927,7 @@ describe("history", () => {
         // Simulate local update
         API.updateScene({
           elements: [rect, h.elements[0]],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         // Simulate local update
@@ -4938,7 +4938,7 @@ describe("history", () => {
             }),
             h.elements[1],
           ],
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
 
         Keyboard.undo();

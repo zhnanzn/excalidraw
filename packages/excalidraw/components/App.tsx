@@ -416,7 +416,7 @@ import { COLOR_PALETTE } from "../colors";
 import { ElementCanvasButton } from "./MagicButton";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import FollowMode from "./FollowMode/FollowMode";
-import { Store, StoreAction, StoreIncrement } from "../store";
+import { Store, StoreAction } from "../store";
 import { AnimationFrameHandler } from "../animation-frame-handler";
 import { AnimatedTrail } from "../animated-trail";
 import { LaserTrails } from "../laser-trails";
@@ -2071,12 +2071,12 @@ class App extends React.Component<AppProps, AppState> {
           if (shouldUpdateStrokeColor) {
             this.syncActionResult({
               appState: { ...this.state, currentItemStrokeColor: color },
-              storeAction: StoreAction.RECORD,
+              storeAction: StoreAction.CAPTURE,
             });
           } else {
             this.syncActionResult({
               appState: { ...this.state, currentItemBackgroundColor: color },
-              storeAction: StoreAction.RECORD,
+              storeAction: StoreAction.CAPTURE,
             });
           }
         } else {
@@ -2090,7 +2090,7 @@ class App extends React.Component<AppProps, AppState> {
               }
               return el;
             }),
-            storeAction: StoreAction.RECORD,
+            storeAction: StoreAction.CAPTURE,
           });
         }
       },
@@ -2111,11 +2111,7 @@ class App extends React.Component<AppProps, AppState> {
       return;
     }
 
-    if (actionResult.storeAction === StoreAction.UPDATE) {
-      this.store.scheduleUpdate();
-    } else if (actionResult.storeAction === StoreAction.RECORD) {
-      this.store.scheduleRecording();
-    }
+    this.store.scheduleAction(actionResult.storeAction);
 
     let didUpdate = false;
 
@@ -2188,7 +2184,7 @@ class App extends React.Component<AppProps, AppState> {
       didUpdate = true;
     }
 
-    if (!didUpdate && actionResult.storeAction !== StoreAction.NONE) {
+    if (!didUpdate) {
       this.scene.triggerUpdate();
     }
   });
@@ -2437,14 +2433,21 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.store.onStoreIncrementEmitter.on((increment) => {
-      if (StoreIncrement.isDurable(increment)) {
-        this.history.record(increment.delta);
-      }
-
+      this.history.record(increment);
       this.props.onIncrement?.(increment);
     });
 
-    this.scene.onUpdate(this.triggerRender);
+    this.scene.onUpdate(() => {
+      // in case there is no explicit action scheduled,
+      // schedule emit to trigger an ephemeral increment
+      // on every possible scene update
+      if (!this.store.isActionScheduled) {
+        this.store.scheduleAction(StoreAction.EMIT);
+      }
+
+      this.triggerRender();
+    });
+
     this.addEventListeners();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {
@@ -3271,7 +3274,7 @@ class App extends React.Component<AppProps, AppState> {
       this.addMissingFiles(opts.files);
     }
 
-    this.store.scheduleRecording();
+    this.store.scheduleCapture();
 
     const nextElementsToSelect =
       excludeElementsInFramesFromSelection(newElements);
@@ -3528,7 +3531,7 @@ class App extends React.Component<AppProps, AppState> {
       PLAIN_PASTE_TOAST_SHOWN = true;
     }
 
-    this.store.scheduleRecording();
+    this.store.scheduleCapture();
   }
 
   setAppState: React.Component<any, AppState>["setState"] = (
@@ -3835,41 +3838,37 @@ class App extends React.Component<AppProps, AppState> {
       /** @default StoreAction.NONE */
       storeAction?: SceneData["storeAction"];
     }) => {
+      if (sceneData.storeAction) {
+        this.store.scheduleAction(sceneData.storeAction);
+      }
+
       const nextElements = syncInvalidIndices(sceneData.elements ?? []);
 
-      if (sceneData.storeAction && sceneData.storeAction !== StoreAction.NONE) {
-        const prevCommittedAppState = this.store.snapshot.appState;
-        const prevCommittedElements = this.store.snapshot.elements;
+      // CFDO: long story short, could I run this in a separate task and detect it after component updates?
+      // if (storeAction !== StoreAction.NONE) {
+      // if (storeAction !== StoreAction.NONE) {
+      //   const prevCommittedAppState = this.store.snapshot.appState;
+      //   const prevCommittedElements = this.store.snapshot.elements;
 
-        const nextCommittedAppState = sceneData.appState
-          ? Object.assign({}, prevCommittedAppState, sceneData.appState) // new instance, with partial appstate applied to previously captured one, including hidden prop inside `prevCommittedAppState`
-          : prevCommittedAppState;
+      //   const nextCommittedAppState = sceneData.appState
+      //     ? Object.assign({}, prevCommittedAppState, sceneData.appState) // new instance, with partial appstate applied to previously captured one, including hidden prop inside `prevCommittedAppState`
+      //     : prevCommittedAppState;
 
-        const nextCommittedElements = sceneData.elements
-          ? this.store.filterUncomittedElements(
-              this.scene.getElementsMapIncludingDeleted(), // Only used to detect uncomitted local elements
-              arrayToMap(nextElements), // We expect all (already reconciled) elements
-            )
-          : prevCommittedElements;
+      //   // CFDO: long story short, could I run this in a separate task and detect it after component updates?
+      //   // 
+      //   const nextCommittedElements = sceneData.elements
+      //     ? this.store.filterUncomittedElements(
+      //         this.scene.getElementsMapIncludingDeleted(), // Only used to detect uncomitted local elements
+      //         arrayToMap(nextElements), // We expect all (already reconciled) elements
+      //       )
+      //     : prevCommittedElements;
 
-        // WARN: store action always performs deep clone of changed elements, for ephemeral remote updates (i.e. remote dragging, resizing, drawing) we might consider doing something smarter
-        // do NOT schedule store actions (execute after re-render), as it might cause unexpected concurrency issues if not handled well
-        if (sceneData.storeAction === StoreAction.RECORD) {
-          this.store.recordDurableIncrement(
-            nextCommittedElements,
-            nextCommittedAppState,
-          );
-        } else if (sceneData.storeAction === StoreAction.UPDATE) {
-          const nextSnapshot = this.store.produceEphemeralIncrement(
-            nextCommittedElements,
-            nextCommittedAppState,
-          );
-
-          if (nextSnapshot) {
-            this.store.snapshot = nextSnapshot;
-          }
-        }
-      }
+      //   this.store.commit(
+      //     storeAction,
+      //     nextCommittedElements,
+      //     nextCommittedAppState,
+      //   );
+      // }
 
       if (sceneData.appState) {
         this.setState(sceneData.appState);
@@ -4324,7 +4323,7 @@ class App extends React.Component<AppProps, AppState> {
                 this.state.editingLinearElement.elementId !==
                   selectedElements[0].id
               ) {
-                this.store.scheduleRecording();
+                this.store.scheduleCapture();
                 if (!isElbowArrow(selectedElement)) {
                   this.setState({
                     editingLinearElement: new LinearElementEditor(
@@ -4528,7 +4527,7 @@ class App extends React.Component<AppProps, AppState> {
     if (!event.altKey) {
       if (this.flowChartNavigator.isExploring) {
         this.flowChartNavigator.clear();
-        this.syncActionResult({ storeAction: StoreAction.RECORD });
+        this.syncActionResult({ storeAction: StoreAction.CAPTURE });
       }
     }
 
@@ -4575,7 +4574,7 @@ class App extends React.Component<AppProps, AppState> {
         }
 
         this.flowChartCreator.clear();
-        this.syncActionResult({ storeAction: StoreAction.RECORD });
+        this.syncActionResult({ storeAction: StoreAction.CAPTURE });
       }
     }
   });
@@ -4636,7 +4635,7 @@ class App extends React.Component<AppProps, AppState> {
       } as const;
 
       if (nextActiveTool.type === "freedraw") {
-        this.store.scheduleRecording();
+        this.store.scheduleCapture();
       }
 
       if (nextActiveTool.type !== "selection") {
@@ -4839,7 +4838,7 @@ class App extends React.Component<AppProps, AppState> {
           ]);
         }
         if (!isDeleted || isExistingElement) {
-          this.store.scheduleRecording();
+          this.store.scheduleCapture();
         }
 
         flushSync(() => {
@@ -5245,7 +5244,7 @@ class App extends React.Component<AppProps, AppState> {
   };
 
   private startImageCropping = (image: ExcalidrawImageElement) => {
-    this.store.scheduleRecording();
+    this.store.scheduleCapture();
     this.setState({
       croppingElementId: image.id,
     });
@@ -5253,7 +5252,7 @@ class App extends React.Component<AppProps, AppState> {
 
   private finishImageCropping = () => {
     if (this.state.croppingElementId) {
-      this.store.scheduleRecording();
+      this.store.scheduleCapture();
       this.setState({
         croppingElementId: null,
       });
@@ -5283,7 +5282,7 @@ class App extends React.Component<AppProps, AppState> {
             selectedElements[0].id) &&
         !isElbowArrow(selectedElements[0])
       ) {
-        this.store.scheduleRecording();
+        this.store.scheduleCapture();
         this.setState({
           editingLinearElement: new LinearElementEditor(selectedElements[0]),
         });
@@ -5313,7 +5312,7 @@ class App extends React.Component<AppProps, AppState> {
         getSelectedGroupIdForElement(hitElement, this.state.selectedGroupIds);
 
       if (selectedGroupId) {
-        this.store.scheduleRecording();
+        this.store.scheduleCapture();
         this.setState((prevState) => ({
           ...prevState,
           ...selectGroupsForSelectedElements(
@@ -8661,7 +8660,7 @@ class App extends React.Component<AppProps, AppState> {
 
       if (isLinearElement(newElement)) {
         if (newElement!.points.length > 1) {
-          this.store.scheduleRecording();
+          this.store.scheduleCapture();
         }
         const pointerCoords = viewportCoordsToSceneCoords(
           childEvent,
@@ -8918,7 +8917,7 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (resizingElement) {
-        this.store.scheduleRecording();
+        this.store.scheduleCapture();
       }
 
       if (resizingElement && isInvisiblySmallElement(resizingElement)) {
@@ -9245,7 +9244,7 @@ class App extends React.Component<AppProps, AppState> {
           this.state.selectedElementIds,
         )
       ) {
-        this.store.scheduleRecording();
+        this.store.scheduleCapture();
       }
 
       if (
@@ -9333,7 +9332,7 @@ class App extends React.Component<AppProps, AppState> {
     this.elementsPendingErasure = new Set();
 
     if (didChange) {
-      this.store.scheduleRecording();
+      this.store.scheduleCapture();
       this.scene.replaceAllElements(elements);
     }
   };
@@ -9887,7 +9886,7 @@ class App extends React.Component<AppProps, AppState> {
                 isLoading: false,
               },
               replaceFiles: true,
-              storeAction: StoreAction.RECORD,
+              storeAction: StoreAction.CAPTURE,
             });
             return;
           } catch (error: any) {
@@ -10004,16 +10003,9 @@ class App extends React.Component<AppProps, AppState> {
       if (ret.type === MIME_TYPES.excalidraw) {
         // restore the fractional indices by mutating elements
         syncInvalidIndices(elements.concat(ret.data.elements));
-
-        const nextSnapshot = this.store.produceEphemeralIncrement(
-          arrayToMap(elements),
-          this.state,
-        );
-
         // update the store snapshot for old elements, otherwise we would end up with duplicated fractional indices on undo
-        if (nextSnapshot) {
-          this.store.snapshot = nextSnapshot;
-        }
+        this.store.scheduleAction(StoreAction.UPDATE);
+        this.store.commit(arrayToMap(elements), this.state);
 
         this.setState({ isLoading: true });
         this.syncActionResult({
@@ -10023,7 +10015,7 @@ class App extends React.Component<AppProps, AppState> {
             isLoading: false,
           },
           replaceFiles: true,
-          storeAction: StoreAction.RECORD,
+          storeAction: StoreAction.CAPTURE,
         });
       } else if (ret.type === MIME_TYPES.excalidrawlib) {
         await this.library

@@ -10,6 +10,7 @@ import type {
   SERVER_DELTA,
   CLIENT_MESSAGE_RAW,
   CHUNK_INFO,
+  RELAY_PAYLOAD,
 } from "./protocol";
 
 // CFDO: message could be binary (cbor, protobuf, etc.)
@@ -65,8 +66,8 @@ export class ExcalidrawSyncServer {
     }
 
     switch (type) {
-      // case "relay":
-      //   return this.relay(client, parsedPayload as RELAY_PAYLOAD);
+      case "relay":
+        return this.relay(client, parsedPayload as RELAY_PAYLOAD);
       case "pull":
         return this.pull(client, parsedPayload as PULL_PAYLOAD);
       case "push":
@@ -137,18 +138,16 @@ export class ExcalidrawSyncServer {
     }
   }
 
-  // private relay(
-  //   client: WebSocket,
-  //   payload: { deltas: Array<CLIENT_DELTA> } | RELAY_PAYLOAD,
-  // ) {
-  //   return this.broadcast(
-  //     {
-  //       type: "relayed",
-  //       payload,
-  //     },
-  //     client,
-  //   );
-  // }
+  private relay(client: WebSocket, payload: RELAY_PAYLOAD) {
+    // CFDO: we should likely apply these to the snapshot
+    return this.broadcast(
+      {
+        type: "relayed",
+        payload,
+      },
+      client,
+    );
+  }
 
   private pull(client: WebSocket, payload: PULL_PAYLOAD) {
     // CFDO: test for invalid payload

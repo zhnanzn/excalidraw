@@ -31,7 +31,7 @@ describe("event callbacks", () => {
     excalidrawAPI.onChange(onChange);
     API.updateScene({
       appState: { viewBackgroundColor: "red" },
-      storeAction: StoreAction.RECORD,
+      storeAction: StoreAction.CAPTURE,
     });
     expect(onChange).toHaveBeenCalledWith(
       // elements
