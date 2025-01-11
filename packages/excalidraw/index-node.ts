@@ -56,6 +56,9 @@ const elements = [
 
 registerFont("./public/Virgil.woff2", { family: "Virgil" });
 registerFont("./public/Cascadia.woff2", { family: "Cascadia" });
+registerFont("./public/zhuifeng.ttf", { family: "ZhuiFeng" });
+registerFont("./public/qingping.ttf", { family: "QingPing" });
+registerFont("./public/shangqian.ttf", { family: "ShangQian" });
 
 const canvas = exportToCanvas(
   elements as any,

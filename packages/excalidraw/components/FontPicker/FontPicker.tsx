@@ -35,6 +35,24 @@ export const DEFAULT_FONTS = [
     text: t("labels.code"),
     testId: "font-family-code",
   },
+  {
+    value: FONT_FAMILY.ZhuiFeng,
+    icon: FreedrawIcon,
+    text: t("labels.handDrawn"),
+    testId: "font-family-zhuifeng",
+  },
+  {
+    value: FONT_FAMILY.QingPing,
+    icon: FreedrawIcon,
+    text: t("labels.handDrawn"),
+    testId: "font-family-qingping",
+  },
+  {
+    value: FONT_FAMILY.ShangQian,
+    icon: FreedrawIcon,
+    text: t("labels.handDrawn"),
+    testId: "font-family-shangqian",
+  },
 ];
 
 const defaultFontFamilies = new Set(DEFAULT_FONTS.map((x) => x.value));

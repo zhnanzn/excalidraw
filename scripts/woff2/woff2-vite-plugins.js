@@ -97,6 +97,27 @@ module.exports.woff2BrowserPlugin = () => {
         type="font/woff2"
         crossorigin="anonymous"
       />
+      <link
+        rel="preload"
+        href="/zhuifeng.ttf"
+        as="font"
+        type="font/ttf"
+        crossorigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/qingping.ttf"
+        as="font"
+        type="font/ttf"
+        crossorigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/shangqian.ttf"
+        as="font"
+        type="font/ttf"
+        crossorigin="anonymous"
+      />
     `,
         );
       }

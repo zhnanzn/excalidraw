@@ -182,7 +182,11 @@ export class ExcalidrawFontFace {
         return "";
       }
 
-      return `format('${parts.pop()}')`;
+      let type = parts.pop();
+      if (type === "ttf") {
+        type = "truetype";
+      }
+      return `format('${type}')`;
     } catch (error) {
       return "";
     }

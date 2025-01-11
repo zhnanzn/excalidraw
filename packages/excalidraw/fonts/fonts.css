@@ -33,3 +33,25 @@
   style: normal;
   display: swap;
 }
+
+@font-face {
+  font-family: "ZhuiFeng";
+  src: url(./zhuifeng.ttf) format("truetype");
+  style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: "QingPing";
+  src: url(./qingping.ttf) format("truetype");
+  style: normal;
+  display: swap;
+}
+
+@font-face {
+  font-family: "ShangQian";
+  src: url(./shangqian.ttf) format("truetype");
+  style: normal;
+  display: swap;
+}
+
